@@ -3,9 +3,11 @@ import { ReceivePacketAnalysis } from "../pkg/receive";
 import { Algorithms } from "../core/encrypt";
 import { Login } from "../core/login";
 import { settings } from "../config/config";
+import { getSeerServerInfo } from "../utils/fetchData";
 
 const RECONNECT_BASE_DELAY_MS = 2000;
 const RECONNECT_MAX_DELAY_MS = 30000;
+const SERVER_CHECK_INTERVAL_MS = 30000;
 const KEY_INIT_DELAY_MS = 5000;
 
 export class TCPService {
@@ -75,16 +77,30 @@ export class TCPService {
     }
     this.sender = null;
 
+    // 启动重连死循环
     void this._reconnectLoop().catch((error) => {
       console.error("【重连】重连循环发生意外错误:", (error as Error).message);
     });
   }
 
   /**
-   * 指数退避重连循环（无限次重试，延迟上限 30s）
+   * 重连循环（结合服务器状态检查和指数退避）
    */
   private async _reconnectLoop(): Promise<void> {
     while (true) {
+      const serverInfo = await getSeerServerInfo();
+      if (serverInfo.status === "未开服") {
+        console.warn(
+          `【重连】服务器未开服，等待 ${
+            SERVER_CHECK_INTERVAL_MS / 1000
+          }s 后再次检查...`
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, SERVER_CHECK_INTERVAL_MS)
+        );
+        continue;
+      }
+
       this.reconnectAttempts++;
       const delay = Math.min(
         RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempts - 1),
@@ -92,12 +108,15 @@ export class TCPService {
       );
 
       console.log(
-        `【重连】第 ${this.reconnectAttempts} 次重连尝试，等待 ${delay / 1000}s...`
+        `【重连】第 ${this.reconnectAttempts} 次重连尝试，等待 ${
+          delay / 1000
+        }s...`
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
 
       try {
         await this._doConnect();
+
         this.reconnectAttempts = 0;
         this.isReconnecting = false;
         console.log("【重连】重连成功！");
@@ -117,7 +136,14 @@ export class TCPService {
     timeout = 5000
   ): Promise<Buffer | null> {
     if (!this.isReady || !this.sender || !this.receiver) {
-      throw new Error("TCP 服务端暂未连接或准备就绪");
+      this._scheduleReconnect();
+
+      while (this.isReconnecting) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      if (!this.isReady || !this.sender || !this.receiver) {
+        throw new Error("TCP 服务端重连失败，无法发送封包");
+      }
     }
 
     const receivePromise = this.receiver.waitForSpecificData(cmdId, timeout);

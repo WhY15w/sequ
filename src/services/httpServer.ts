@@ -1,7 +1,7 @@
 import express from "express";
 import { tcpService } from "./tcpService";
 import { PacketBuilder } from "../utils/pkgBuilder";
-import { BufferReader, BitUtil } from "../utils/reader";
+import { BufferReader } from "../utils/reader";
 
 const app: express.Application = express();
 app.use(express.json());
