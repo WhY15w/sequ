@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { SendPacketProcessing } from "../pkg/send";
 import { ReceivePacketAnalysis } from "../pkg/receive";
 import { Algorithms } from "../core/encrypt";
@@ -42,14 +43,14 @@ export class TCPService {
       algorithms,
       writer,
       settings.service_account_id,
-      (msg) => console.log(msg)
+      (msg) => console.log(`[${dayjs().format("YYYY-MM-DD HH:mm:ss")}] ${msg}`)
     );
 
     this.receiver = new ReceivePacketAnalysis(
       algorithms,
       reader,
       settings.service_account_id,
-      (msg) => console.log(msg),
+      (msg) => console.log(`[${dayjs().format("YYYY-MM-DD HH:mm:ss")}] ${msg}`),
       () => {
         console.log("【系统提示】网络连接已断开，准备重连...");
         this._scheduleReconnect();
