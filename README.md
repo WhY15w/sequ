@@ -17,12 +17,10 @@
 
 ## 特性
 
-- 使用真实游戏账号登录，通过专有加密 TCP 协议与游戏服务器通信
+- 使用真实游戏账号登录，通过 TCP 协议与游戏服务器通信
 - 自动维持心跳（每 5 分钟）保活长连接
 - 断线自动重连，支持指数退避策略（2 s → 30 s）
-- 重连前检测服务器维护状态，避免无效重试
-- 统一的 HTTP JSON 响应格式，方便下游解析
-- 可配置的封包日志，便于调试
+- 重连前检测服务器维护状态
 
 ---
 
@@ -174,7 +172,7 @@ pnpm start   # 等价于 tsc && node dist/index.js
 | `hexDataPrat2` | cmdId 41298（param=5）返回的名片展示精灵数据 |
 | `hexDataPeak` | cmdId 40002 返回的巅峰赛各赛季排名数据（竞技/荒野/专家共 12 组）|
 
-> 以上十六进制数据均为游戏协议原始字节，具体字段解析需结合游戏协议文档由调用方自行处理。
+> 以上十六进制数据均为游戏协议原始字节，具体字段解析未在此项目实现。
 
 ---
 
@@ -216,13 +214,13 @@ src/
 ├── index.ts              # 入口：初始化 TCP 服务后启动 HTTP 服务器
 ├── config/
 │   ├── config.ts         # 环境变量加载与类型安全访问
-│   └── Command.json      # 1000+ 游戏命令 ID → 命令名映射表
+│   └── Command.json      # 游戏命令 ID → 命令名映射表
 ├── core/
 │   ├── login.ts          # 登录认证：获取 session token、发送登录封包
 │   └── encrypt.ts        # 对称加密/解密（XOR + 位旋转 + 循环缓冲区旋转）
 ├── pkg/
 │   ├── send.ts           # 封包构建、加密、发送及 sendAndReceive 封装
-│   └── receive.ts        # TCP 流缓冲、封包解析、命令路由（EventEmitter）
+│   └── receive.ts        # TCP 流缓冲、封包解析、命令路由
 ├── services/
 │   ├── httpServer.ts     # Express HTTP API 路由（3 个接口）
 │   └── tcpService.ts     # TCP 连接管理：心跳、断线重连、请求超时
@@ -230,8 +228,8 @@ src/
     ├── pkgBuilder.ts     # 链式封包构建器（setCmdId / addU32 / addU16 ...）
     ├── reader.ts         # 二进制缓冲区读取工具（BufferReader / BitUtil）
     ├── format.ts         # 十六进制格式化输出
-    ├── fetchData.ts      # 查询游戏维护公告（unity-notice.61.com）
-    └── httpUtil.ts       # HTTP 工具函数（账号校验、统一响应格式）
+    ├── fetchData.ts      # 查询游戏维护公告
+    └── httpUtil.ts       # HTTP 工具函数
 ```
 
 ---
