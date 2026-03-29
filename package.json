@@ -4,7 +4,9 @@
   "description": "simple userinfo query to seer",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "build": "tsc",
+    "start": "tsc && node dist/index.js",
+    "dev": "ts-node src/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +18,7 @@
     "typescript": "^6.0.2"
   },
   "dependencies": {
-    "axios": "^1.13.6",
+    "axios": "^1.14.0",
     "dayjs": "^1.11.20",
     "dotenv": "^17.3.1",
     "express": "^5.2.1"
