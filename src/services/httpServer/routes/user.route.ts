@@ -1,18 +1,17 @@
 import express, { Request, Response } from "express";
-import { tcpService } from "./tcpService";
-import { PacketBuilder } from "../utils/pkgBuilder";
-import { BufferReader } from "../utils/reader";
+import { tcpService } from "../../../services/tcpService";
+import { PacketBuilder } from "../../../utils/pkgBuilder";
+import { BufferReader } from "../../../utils/reader";
 import {
   isValidAccount,
   getInvalidAccountRes,
   toHexStr,
-} from "../utils/httpUtil";
+} from "../../../utils/httpUtil";
 
-const app: express.Application = express();
-app.use(express.json());
+const router: express.Router = express.Router();
 
 // 查询用户在线状态
-app.get("/api/getUserOnlineStatus", async (req: Request, res: Response) => {
+router.get("/getUserOnlineStatus", async (req: Request, res: Response) => {
   const account = Number(req.query.account);
 
   if (!isValidAccount(account)) {
@@ -74,7 +73,7 @@ app.get("/api/getUserOnlineStatus", async (req: Request, res: Response) => {
 });
 
 // 获取米米号详细信息
-app.get("/api/getUserInfo", async (req: Request, res: Response) => {
+router.get("/getUserInfo", async (req: Request, res: Response) => {
   const account = Number(req.query.account);
 
   if (!isValidAccount(account)) {
@@ -197,7 +196,7 @@ app.get("/api/getUserInfo", async (req: Request, res: Response) => {
 });
 
 // 获取战队信息
-app.get("/api/getTeamInfo", async (req: Request, res: Response) => {
+router.get("/getTeamInfo", async (req: Request, res: Response) => {
   const teamId = Number(req.query.teamId);
 
   try {
@@ -229,4 +228,4 @@ app.get("/api/getTeamInfo", async (req: Request, res: Response) => {
   }
 });
 
-export { app };
+export default router;

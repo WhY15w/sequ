@@ -1,5 +1,5 @@
 import { tcpService } from "./services/tcpService";
-import { app } from "./services/httpServer";
+import { app } from "./services/httpServer/app";
 
 async function bootstrap() {
   try {
