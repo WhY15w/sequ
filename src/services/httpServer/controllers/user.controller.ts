@@ -8,8 +8,6 @@ import {
   toHexStr,
 } from "../../../utils/httpUtil";
 
-// ---- 内部查询辅助函数 ----
-
 interface NicknameResult {
   success: boolean;
   nickName?: string;
@@ -48,8 +46,6 @@ async function fetchOnlineStatus(account: number): Promise<OnlineResult> {
   const server = String(reader.readUInt32());
   return { online: isOnline, ...(isOnline ? { server } : {}) };
 }
-
-// ---- 路由处理函数 ----
 
 // 查询用户在线状态
 export async function getUserOnlineStatus(
@@ -104,7 +100,7 @@ export async function getUserInfo(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    // 第一步：验证账号是否存在（昵称查询）
+    // 验证账号是否存在
     const nicknameResult = await fetchNickname(account);
     if (!nicknameResult.success) {
       res.json({
@@ -116,7 +112,7 @@ export async function getUserInfo(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // 第二步：并发获取在线状态和简单信息（不同命令ID，可安全并发）
+    // 获取在线状态和简单信息
     const [onlineResult, hexDataSimple] = await Promise.all([
       fetchOnlineStatus(account),
       (async () => {
@@ -125,7 +121,7 @@ export async function getUserInfo(req: Request, res: Response): Promise<void> {
       })(),
     ]);
 
-    // 第三步：成就/精灵信息（41298 命令，顺序发送）
+    // 成就/精灵信息
     const pkt41298_1 = new PacketBuilder()
       .setCmdId(41298)
       .addU32(1)
@@ -148,7 +144,7 @@ export async function getUserInfo(req: Request, res: Response): Promise<void> {
       await tcpService.sendAndReceive(41298, pkt41298_5)
     );
 
-    // 第四步：巅峰信息（40002 命令，顺序发送）
+    // 巅峰信息
     const peakParams = [
       124801,
       124802,
