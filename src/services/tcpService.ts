@@ -42,18 +42,23 @@ export class TCPService {
       settings.service_account_password
     );
 
+    const msgCallback = settings.log_callbacks
+      ? (msg: string) =>
+          console.log(`[${dayjs().format("YYYY-MM-DD HH:mm:ss")}] ${msg}`)
+      : undefined;
+
     this.sender = new SendPacketProcessing(
       algorithms,
       writer,
       settings.service_account_id,
-      (msg) => console.log(`[${dayjs().format("YYYY-MM-DD HH:mm:ss")}] ${msg}`)
+      msgCallback
     );
 
     this.receiver = new ReceivePacketAnalysis(
       algorithms,
       reader,
       settings.service_account_id,
-      (msg) => console.log(`[${dayjs().format("YYYY-MM-DD HH:mm:ss")}] ${msg}`),
+      msgCallback,
       () => {
         console.log("【系统提示】网络连接已断开，准备重连...");
         this._scheduleReconnect();

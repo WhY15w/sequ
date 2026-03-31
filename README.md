@@ -56,6 +56,7 @@ pnpm dev
 | `GAME_SERVER_PORT` | 游戏服务器端口 | `1225` | 否 |
 | `SERVICE_ACCOUNT_ID` | 登录用米米号 | — | **必填** |
 | `SERVICE_ACCOUNT_PASSWORD` | 登录密码 | — | **必填** |
+| `LOG_CALLBACKS` | 是否打印发送/接收封包的回调日志，生产环境可设为 `false` 以减少日志输出 | `true` | 否 |
 | `LOG_FULL_PACKET` | 是否记录完整封包十六进制数据 | `false` | 否 |
 | `IGNORED_CMD_IDS` | 不打印日志的命令 ID 列表，以 `\|` 分隔 | `8002\|3452\|...` | 否 |
 
