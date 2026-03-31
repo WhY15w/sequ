@@ -18,6 +18,7 @@ export class Algorithms {
     let j = 0;
     let needBecomeZero = false;
 
+    // 注意：key 每轮重置时，key[0] 会被使用两次（协议行为，不可简化）
     for (let i = 0; i < plain.length; i++) {
       if (j === 1 && needBecomeZero) {
         j = 0;
@@ -71,6 +72,7 @@ export class Algorithms {
 
     let j = 0;
     let needBecomeZero = false;
+    // 注意：key 每轮重置时，key[0] 会被使用两次（协议行为，不可简化）
     for (let i = 0; i < plain.length; i++) {
       if (j === 1 && needBecomeZero) {
         j = 0;
@@ -99,6 +101,11 @@ export class Algorithms {
     const newKey = md5Hash.slice(0, 10);
     this.key = Buffer.from(newKey, "utf-8");
     console.log("Updated encryption key to:", this.key.toString());
+  }
+
+  /** 设置 result 初始值（由 1001 握手包提供） */
+  setResult(value: number): void {
+    this.result = value;
   }
 
   /** 计算 MSerial */

@@ -174,6 +174,7 @@ export class TCPService {
         this.reconnectAttempts = 0;
         this.isReconnecting = false;
         console.log("【重连】重连成功！");
+        this._notifyReady();
         return;
       } catch (error) {
         const delay = Math.min(
@@ -192,6 +193,19 @@ export class TCPService {
     }
   }
 
+  private readyWaiters: Array<() => void> = [];
+
+  /** 通知所有等待就绪的调用方 */
+  private _notifyReady(): void {
+    const waiters = this.readyWaiters.splice(0);
+    for (const resolve of waiters) resolve();
+  }
+
+  /** 等待连接就绪（用于重连期间的调用方阻塞） */
+  private _waitUntilReady(): Promise<void> {
+    return new Promise((resolve) => this.readyWaiters.push(resolve));
+  }
+
   async sendAndReceive(
     cmdId: number,
     hexPacket: string,
@@ -199,10 +213,7 @@ export class TCPService {
   ): Promise<Buffer | null> {
     if (!this.isReady || !this.sender || !this.receiver) {
       this._scheduleReconnect();
-
-      while (this.isReconnecting) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      await this._waitUntilReady();
       if (!this.isReady || !this.sender || !this.receiver) {
         throw new Error("TCP 服务端重连失败，无法发送封包");
       }
@@ -220,9 +231,7 @@ export class TCPService {
       return null;
     }
     // 截取 body 部分（去掉前 17 字节头部）
-    const body = receivedData.subarray(17);
-
-    return body;
+    return receivedData.subarray(17);
   }
 }
 

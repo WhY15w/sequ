@@ -1,7 +1,7 @@
 import { Algorithms } from "../core/encrypt";
 import net from "net";
 import { HexFormatter } from "../utils/format";
-import CommandData from "../config/Command.json";
+import { getCommandName } from "../utils/commandDict";
 
 type MessageCallback = (message: string) => void;
 
@@ -20,8 +20,6 @@ export class SendPacketProcessing {
   private result: Buffer | null = null;
   private body: Buffer | null = null;
 
-  private commandDict: Record<string, string> = {};
-
   constructor(
     algorithms: Algorithms,
     writer: net.Socket,
@@ -35,19 +33,6 @@ export class SendPacketProcessing {
     // 将用户ID转换为4字节大端序Buffer
     this.userId = Buffer.allocUnsafe(4);
     this.userId.writeUInt32BE(userid, 0);
-
-    try {
-      const parsed: Record<string, any> = CommandData;
-      for (const key in parsed) {
-        this.commandDict[key] = Array.isArray(parsed[key])
-          ? parsed[key][0]
-          : parsed[key];
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        console.error("Command.json 文件不存在");
-      }
-    }
   }
 
   /**
@@ -167,8 +152,7 @@ export class SendPacketProcessing {
 
       if (this.messageCallback && this.cmdId) {
         const commandValue = this.cmdId.readUInt32BE(0);
-        const commandStr =
-          this.commandDict[commandValue.toString()] || "Unknown Command";
+        const commandStr = getCommandName(commandValue);
 
         this.messageCallback(
           `发送|[${commandValue}] ${commandStr}|${assembledPacket
@@ -191,16 +175,16 @@ export class SendPacketProcessing {
    * 发送数据包并等待对应的返回封包
    * @param packedMessage 封包的 hex 字符串
    * @param receiver 接收器实例
-   * @param expectedCmdId 期望收到的命令 ID (如果不传，默认尝试从发包数据中解析)
-   * @param timeout 超时时间 (默认 5000 毫秒)
+   * @param expectedCmdId 期望收到的命令 ID（不传时从发包数据中解析）
+   * @param timeout 超时时间（默认 5000 毫秒）
    */
   async sendAndReceive(
     packedMessage: string,
     receiver: any,
     expectedCmdId?: number,
-    timeout: number = 5000,
-    hexFormat: boolean = true
-  ): Promise<Buffer | null | string> {
+    timeout: number = 5000
+  ): Promise<Buffer | null> {
+    // 只组装一次，避免 calculateResult 被重复调用
     const assembledPacket = this.groupPacket(packedMessage);
     if (!assembledPacket) return null;
 
@@ -212,16 +196,14 @@ export class SendPacketProcessing {
 
     const receivePromise = receiver.waitForSpecificData(waitCmdId, timeout);
 
-    const success = await this.sendPacket(packedMessage);
-    if (!success) {
-      return null;
+    try {
+      await this.writeToSocket(assembledPacket);
+    } catch (error) {
+      // 写入失败时直接抛出，接收方注册的 waiter 将在超时后自动清理
+      throw error;
     }
 
-    const responseData = await receivePromise;
-    if (hexFormat) {
-      return responseData.toString("hex");
-    }
-    return responseData;
+    return receivePromise;
   }
 
   /**

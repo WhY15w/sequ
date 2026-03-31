@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import net from "net";
 import { Algorithms } from "../core/encrypt";
-import CommandData from "../config/Command.json";
+import { getCommandName } from "../utils/commandDict";
 
 export class ReceivePacketAnalysis extends EventEmitter {
   private algorithms: Algorithms;
@@ -11,7 +11,6 @@ export class ReceivePacketAnalysis extends EventEmitter {
   private messageCallback?: (msg: string) => void;
   private disconnectCallback?: () => Promise<void> | void;
 
-  private commandDict: Record<string, string> = {};
   private waiters: Map<number, Array<(value: Buffer | null) => void>> =
     new Map();
 
@@ -40,23 +39,7 @@ export class ReceivePacketAnalysis extends EventEmitter {
     this.logFullPacket = logFullPacket;
     this.ignoredCmdIds = new Set(ignoredCmdIds);
 
-    this._loadCommandDict();
     this._setupSocketListeners();
-  }
-
-  private _loadCommandDict(): void {
-    try {
-      const parsed: Record<string, any> = CommandData;
-      for (const key in parsed) {
-        this.commandDict[key] = Array.isArray(parsed[key])
-          ? parsed[key][0]
-          : parsed[key];
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        console.error("Command.json 文件不存在");
-      }
-    }
   }
 
   private _setupSocketListeners(): void {
@@ -111,8 +94,7 @@ export class ReceivePacketAnalysis extends EventEmitter {
 
         // 提取命令 ID (offset 5, 长度 4 字节, 大端序)
         const commandValue = packetData.readUInt32BE(5);
-        const commandStr =
-          this.commandDict[commandValue.toString()] || "Unknown Command";
+        const commandStr = getCommandName(commandValue);
 
         if (this.messageCallback && !this.ignoredCmdIds.has(commandValue)) {
           if (this.logFullPacket) {
@@ -145,7 +127,7 @@ export class ReceivePacketAnalysis extends EventEmitter {
 
           // 提取 Result (offset 13, 长度 4 字节, 大端序)
           const result = packetData.readUInt32BE(13);
-          (this.algorithms as any).result = result; // 需要确保 algorithms 有 result 属性
+          this.algorithms.setResult(result);
 
           if (this.messageCallback) {
             this.messageCallback(`初始化|更新|Result: ${result}`);
