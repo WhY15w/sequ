@@ -201,7 +201,7 @@ export class SendPacketProcessing {
    */
   private writeToSocket(data: Buffer): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      if (!this.writer || this.writer.destroyed) {
+      if (!this.isConnected()) {
         reject(new Error("Socket连接已断开"));
         return;
       }
@@ -261,6 +261,15 @@ export class SendPacketProcessing {
   }
 
   isConnected(): boolean {
-    return this.writer && !this.writer.destroyed;
+    if (!this.writer) return false;
+
+    // readyState=open 且可写，才认为连接可用。
+    const socketReady =
+      !this.writer.destroyed &&
+      this.writer.readyState === "open" &&
+      this.writer.writable &&
+      !this.writer.writableEnded;
+
+    return socketReady;
   }
 }

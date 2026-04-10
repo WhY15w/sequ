@@ -1,15 +1,5 @@
 import axios from "axios";
 
-const MIDNIGHT_SHORT_MAINTENANCE_START_HOUR = 0;
-const MIDNIGHT_SHORT_MAINTENANCE_END_HOUR = 1;
-
-type UnityNoticeStatus = "维护" | "开服" | "疑似短时维护";
-
-interface UnityNoticeParseResult {
-  status: UnityNoticeStatus;
-  info: string;
-}
-
 async function getUnityNoticeInfo(
   url: string = "http://unity-notice.61.com/unity_notice/",
 ) {
@@ -20,27 +10,13 @@ async function getUnityNoticeInfo(
   return data;
 }
 
-function parseUnityNotice(
-  noticeList: any[],
-  now: Date = new Date(),
-): UnityNoticeParseResult {
+function parseUnityNotice(noticeList: any[]) {
   const maintenanceNotice = noticeList.find((n) => n.type === 3);
-  const currentHour = now.getHours();
-  const isMidnightWindow =
-    currentHour >= MIDNIGHT_SHORT_MAINTENANCE_START_HOUR &&
-    currentHour < MIDNIGHT_SHORT_MAINTENANCE_END_HOUR;
 
   if (maintenanceNotice) {
     return {
       status: "维护",
       info: maintenanceNotice.text || "当前有维护公告，但未提供具体信息",
-    };
-  }
-
-  if (isMidnightWindow) {
-    return {
-      status: "疑似短时维护",
-      info: "凌晨时段公告可能存在延迟，进入快速重连探测模式",
     };
   }
 
