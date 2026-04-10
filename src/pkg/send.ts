@@ -2,6 +2,7 @@ import { Algorithms } from "../core/encrypt.js";
 import net from "net";
 import { HexFormatter } from "../utils/format.js";
 import { getCommandName } from "../utils/commandDict.js";
+import type { ReceivePacketAnalysis } from "./receive.js";
 
 type MessageCallback = (message: string) => void;
 
@@ -176,7 +177,7 @@ export class SendPacketProcessing {
    */
   async sendAndReceive(
     packedMessage: string,
-    receiver: any,
+    receiver: ReceivePacketAnalysis,
     expectedCmdId?: number,
     timeout: number = 5000,
   ): Promise<Buffer | null> {

@@ -15,8 +15,44 @@ interface NicknameResult {
   hexData?: string;
 }
 
+const PEAK_PARAMS = [
+  124801,
+  124802,
+  124804,
+  124805, // 竞技
+  124791,
+  124792,
+  124793,
+  124794, // 狂野
+  129441,
+  129443,
+  129446,
+  129447, // 专家
+];
+
+const PEAK_QUERY_DELAY_MS = 5;
+
+const buildPacket = (cmdId: number, ...params: number[]): string => {
+  const builder = new PacketBuilder().setCmdId(cmdId);
+  for (const param of params) {
+    builder.addU32(param);
+  }
+  return builder.build();
+};
+
+const sleep = (delayMs: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, delayMs));
+
+async function sendPacketAndToHex(
+  cmdId: number,
+  ...params: number[]
+): Promise<string> {
+  const packet = buildPacket(cmdId, ...params);
+  return toHexStr(await tcpService.sendAndReceive(cmdId, packet));
+}
+
 async function fetchNickname(account: number): Promise<NicknameResult> {
-  const pkt = new PacketBuilder().setCmdId(2052).addU32(account).build();
+  const pkt = buildPacket(2052, account);
   const res = await tcpService.sendAndReceive(2052, pkt);
   if (!res || res.length <= 39) return { success: false };
   const reader = new BufferReader(res);
@@ -34,11 +70,7 @@ interface OnlineResult {
 }
 
 async function fetchOnlineStatus(account: number): Promise<OnlineResult> {
-  const pkt = new PacketBuilder()
-    .setCmdId(2157)
-    .addU32(1)
-    .addU32(account)
-    .build();
+  const pkt = buildPacket(2157, 1, account);
   const res = await tcpService.sendAndReceive(2157, pkt);
   if (!res || res.length < 12) return { online: false };
   const reader = new BufferReader(res);
@@ -56,8 +88,10 @@ export async function getUserOnlineStatus(
   const account = Number(req.query.account);
 
   if (!isValidAccount(account)) {
-    const invalidAccountRes = getInvalidAccountRes(account);
-    res.json(badRequest(invalidAccountRes.message, invalidAccountRes.data));
+    const invalidAccountResponse = getInvalidAccountRes(account);
+    res.json(
+      badRequest(invalidAccountResponse.message, invalidAccountResponse.data),
+    );
     return;
   }
 
@@ -100,10 +134,10 @@ export async function getUserInfo(req: Request, res: Response): Promise<void> {
   const account = Number(req.query.account);
 
   if (!isValidAccount(account)) {
-    const invalidAccountRes = getInvalidAccountRes(account, true);
+    const invalidAccountResponse = getInvalidAccountRes(account, true);
     res.json(
-      badRequest(invalidAccountRes.message, invalidAccountRes.data, {
-        status: invalidAccountRes.status,
+      badRequest(invalidAccountResponse.message, invalidAccountResponse.data, {
+        status: invalidAccountResponse.status,
       }),
     );
     return;
@@ -126,60 +160,19 @@ export async function getUserInfo(req: Request, res: Response): Promise<void> {
     // 获取在线状态和简单信息
     const [onlineResult, hexDataSimple] = await Promise.all([
       fetchOnlineStatus(account),
-      (async () => {
-        const pkt = new PacketBuilder().setCmdId(2051).addU32(account).build();
-        return toHexStr(await tcpService.sendAndReceive(2051, pkt));
-      })(),
+      sendPacketAndToHex(2051, account),
     ]);
 
     // 成就/精灵信息
-    const pkt41298_1 = new PacketBuilder()
-      .setCmdId(41298)
-      .addU32(1)
-      .addU32(account)
-      .addU32(0)
-      .addU32(0)
-      .build();
-    const hexDataPrat1 = toHexStr(
-      await tcpService.sendAndReceive(41298, pkt41298_1),
-    );
-
-    const pkt41298_5 = new PacketBuilder()
-      .setCmdId(41298)
-      .addU32(5)
-      .addU32(account)
-      .addU32(0)
-      .addU32(0)
-      .build();
-    const hexDataPrat2 = toHexStr(
-      await tcpService.sendAndReceive(41298, pkt41298_5),
-    );
-
-    // 巅峰信息
-    const peakParams = [
-      124801,
-      124802,
-      124804,
-      124805, // 竞技
-      124791,
-      124792,
-      124793,
-      124794, // 狂野
-      129441,
-      129443,
-      129446,
-      129447, // 专家
-    ];
+    const [hexDataPrat1, hexDataPrat2] = await Promise.all([
+      sendPacketAndToHex(41298, 1, account, 0, 0),
+      sendPacketAndToHex(41298, 5, account, 0, 0),
+    ]);
 
     let hexDataPeak = "";
-    for (const param of peakParams) {
-      const pkt = new PacketBuilder()
-        .setCmdId(40002)
-        .addU32(account)
-        .addU32(param)
-        .build();
-      hexDataPeak += toHexStr(await tcpService.sendAndReceive(40002, pkt));
-      await new Promise((resolve) => setTimeout(resolve, 5));
+    for (const param of PEAK_PARAMS) {
+      hexDataPeak += await sendPacketAndToHex(40002, account, param);
+      await sleep(PEAK_QUERY_DELAY_MS);
     }
 
     res.json(

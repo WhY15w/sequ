@@ -1,9 +1,25 @@
-const isValidAccount = (account: number): boolean => {
-  return !!account && account >= 50000 && account <= 2000000000;
+type InvalidAccountRes = {
+  success: false;
+  message: string;
+  data: {
+    account: string;
+    error: string;
+  };
+  status?: number;
 };
 
-const getInvalidAccountRes = (account: any, includeStatus = false) => {
-  const res: any = {
+const MIN_ACCOUNT = 50000;
+const MAX_ACCOUNT = 2000000000;
+
+const isValidAccount = (account: number): boolean => {
+  return !!account && account >= MIN_ACCOUNT && account <= MAX_ACCOUNT;
+};
+
+const getInvalidAccountRes = (
+  account: unknown,
+  includeStatus = false,
+): InvalidAccountRes => {
+  const res: InvalidAccountRes = {
     success: false,
     message: "数据返回失败",
     data: {
