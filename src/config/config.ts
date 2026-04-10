@@ -23,6 +23,9 @@ interface Settings {
   log_callbacks: boolean;
   log_full_packet: boolean;
   ignored_cmd_ids: number[];
+
+  feishu_webhook_url: string;
+  feishu_webhook_secret: string;
 }
 
 function getEnvNumber(
@@ -76,6 +79,8 @@ export const settings: Settings = {
     "IGNORED_CMD_IDS",
     [8002, 3452, 2004, 2001, 41228, 1002, 2002],
   ),
+  feishu_webhook_url: getEnvString("FEISHU_WEBHOOK_URL", ""),
+  feishu_webhook_secret: getEnvString("FEISHU_WEBHOOK_SECRET", ""),
 };
 
 if (!settings.service_account_id) {

@@ -1,9 +1,11 @@
+process.title = "seer-query";
 import { tcpService } from "./services/tcpService.js";
 import { app } from "./services/httpServer/app.js";
 import { settings } from "./config/config.js";
 import type { Server } from "http";
 
 let httpServer: Server | null = null;
+// pkill -f "seer-api"
 
 async function bootstrap() {
   try {

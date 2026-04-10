@@ -6,9 +6,11 @@ import { Login } from "../core/login.js";
 import { settings } from "../config/config.js";
 import { getUnityNoticeInfo, parseUnityNotice } from "../utils/fetchData.js";
 import { PacketBuilder } from "../utils/pkgBuilder.js";
+import { sendTextMessage } from "../utils/webHook/feishu.js";
 
 const RECONNECT_BASE_DELAY_MS = 2000;
 const RECONNECT_MAX_DELAY_MS = 30000;
+const MAX_RECONNECT_ATTEMPTS = 10;
 const SERVER_CHECK_INTERVAL_MS = 60000;
 const KEY_INIT_DELAY_MS = 5000;
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
@@ -20,6 +22,16 @@ export class TCPService {
   private isReconnecting: boolean = false;
   private reconnectAttempts: number = 0;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private reconnectFailure: Error | null = null;
+
+  private _notifyReconnectFailure(message: string): void {
+    const task = sendTextMessage(message);
+    if (!task) return;
+
+    void task.catch((err) => {
+      console.error("【飞书】告警发送失败:", (err as Error).message);
+    });
+  }
 
   /**
    * 初始化 TCP 连接并完成登录和密钥交换
@@ -93,6 +105,15 @@ export class TCPService {
     this.heartbeatTimer = setInterval(async () => {
       if (!this.isReady) return;
 
+      // 连接断开时不再发送心跳，直接进入重连流程。
+      if (!this.sender || !this.sender.isConnected()) {
+        console.warn(
+          `[${dayjs().format("YYYY-MM-DD HH:mm:ss")}] 【心跳】检测到 Socket 断开，跳过心跳并触发重连`,
+        );
+        this._scheduleReconnect();
+        return;
+      }
+
       try {
         const account = settings.service_account_id;
         const pkt2157 = new PacketBuilder()
@@ -131,6 +152,7 @@ export class TCPService {
     if (this.isReconnecting) return;
     this.isReconnecting = true;
     this.isReady = false;
+    this.reconnectFailure = null;
 
     // 停止心跳
     this._stopHeartbeat();
@@ -193,6 +215,24 @@ export class TCPService {
         this._notifyReady();
         return;
       } catch (error) {
+        if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+          const finalError = new Error(
+            `TCP 服务端重连失败，已连续尝试 ${MAX_RECONNECT_ATTEMPTS} 次，已停止自动重连`,
+          );
+          const finalAlert =
+            `【seer-query 告警】重连终止\n` +
+            `时间: ${dayjs().format("YYYY-MM-DD HH:mm:ss")}\n` +
+            `原因: ${finalError.message}`;
+
+          console.error(`【重连】${finalError.message}`);
+          this._notifyReconnectFailure(finalAlert);
+          this.isReconnecting = false;
+          this.isReady = false;
+          this.reconnectFailure = finalError;
+          this._notifyFailed(finalError);
+          throw finalError;
+        }
+
         const delay = Math.min(
           RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempts - 1),
           RECONNECT_MAX_DELAY_MS,
@@ -203,23 +243,49 @@ export class TCPService {
             (error as Error).message
           }`,
         );
+        this._notifyReconnectFailure(
+          `【seer-query 告警】重连失败\n` +
+            `时间: ${dayjs().format("YYYY-MM-DD HH:mm:ss")}\n` +
+            `次数: 第 ${this.reconnectAttempts} 次\n` +
+            `错误: ${(error as Error).message}`,
+        );
         console.log(`【重连】等待 ${delay / 1000}s 后进行下一次尝试...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
 
-  private readyWaiters: Array<() => void> = [];
+  private readyWaiters: Array<{
+    resolve: () => void;
+    reject: (reason?: any) => void;
+  }> = [];
 
   /** 通知所有等待就绪的调用方 */
   private _notifyReady(): void {
+    this.reconnectFailure = null;
     const waiters = this.readyWaiters.splice(0);
-    for (const resolve of waiters) resolve();
+    for (const waiter of waiters) waiter.resolve();
+  }
+
+  /** 通知所有等待中的调用方：重连失败 */
+  private _notifyFailed(error: Error): void {
+    const waiters = this.readyWaiters.splice(0);
+    for (const waiter of waiters) waiter.reject(error);
   }
 
   /** 等待连接就绪（用于重连期间的调用方阻塞） */
   private _waitUntilReady(): Promise<void> {
-    return new Promise((resolve) => this.readyWaiters.push(resolve));
+    if (this.isReady) {
+      return Promise.resolve();
+    }
+
+    if (!this.isReconnecting && this.reconnectFailure) {
+      return Promise.reject(this.reconnectFailure);
+    }
+
+    return new Promise((resolve, reject) =>
+      this.readyWaiters.push({ resolve, reject }),
+    );
   }
 
   async sendAndReceive(
@@ -288,6 +354,7 @@ export class TCPService {
   shutdown(): void {
     this.isReconnecting = false;
     this.isReady = false;
+    this.reconnectFailure = new Error("TCP 服务已关闭");
     this._stopHeartbeat();
 
     if (this.receiver) {
@@ -298,7 +365,7 @@ export class TCPService {
 
     // 通知所有等待中的调用方
     const waiters = this.readyWaiters.splice(0);
-    for (const resolve of waiters) resolve();
+    for (const waiter of waiters) waiter.reject(this.reconnectFailure);
 
     console.log("TCP 服务已关闭");
   }
