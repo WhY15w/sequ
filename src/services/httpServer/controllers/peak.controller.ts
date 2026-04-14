@@ -1,50 +1,50 @@
-import { PacketBuilder } from '../../../utils/pkgBuilder.js'
-import { BufferReader } from '../../../utils/reader.js'
-import { badRequest, fail, notFound, success } from '../../../utils/reply.js'
-import { tcpService } from '../../tcpService.js'
-import type { Request, Response } from 'express'
+import { PacketBuilder } from '../../../utils/pkgBuilder.js';
+import { BufferReader } from '../../../utils/reader.js';
+import { badRequest, fail, notFound, success } from '../../../utils/reply.js';
+import { tcpService } from '../../tcpService.js';
+import type { Request, Response } from 'express';
 
 type RankItem = {
-  userid: number
-  score: number
-  nick: string
-}
+  userid: number;
+  score: number;
+  nick: string;
+};
 
 type VoteItem = {
-  voteMonsterId: number
-  voteCount: number
-}
+  voteMonsterId: number;
+  voteCount: number;
+};
 
 function parseVoteList(voteResult: Buffer): VoteItem[] {
-  const reader = new BufferReader(voteResult)
-  const voteListLen = reader.readUInt32()
-  const voteList: VoteItem[] = []
+  const reader = new BufferReader(voteResult);
+  const voteListLen = reader.readUInt32();
+  const voteList: VoteItem[] = [];
 
   for (let i = 0; i < voteListLen; i++) {
     voteList.push({
       voteMonsterId: reader.readUInt32(),
       voteCount: reader.readUInt32(),
-    })
-    reader.skip(16)
+    });
+    reader.skip(16);
   }
 
-  return voteList
+  return voteList;
 }
 
 function parseRankList(rankResult: Buffer): RankItem[] {
-  const reader = new BufferReader(rankResult)
-  const rankListLen = reader.readUInt32()
-  const rankList: RankItem[] = []
+  const reader = new BufferReader(rankResult);
+  const rankListLen = reader.readUInt32();
+  const rankList: RankItem[] = [];
 
   for (let i = 0; i < rankListLen; i++) {
     rankList.push({
       userid: reader.readUInt32(),
       score: reader.readUInt32(),
       nick: reader.readString(16),
-    })
+    });
   }
 
-  return rankList
+  return rankList;
 }
 
 /**
@@ -89,7 +89,7 @@ function parseRankList(rankResult: Buffer): RankItem[] {
 function getPeakRankKey(page: number, mode: number, tab: number): number {
   switch (page) {
     case 1: // 玩家排行
-      return [120, 182, 199][mode] ?? NaN
+      return [120, 182, 199][mode] ?? NaN;
     case 2: // 精灵排行
       return (
         [
@@ -97,7 +97,7 @@ function getPeakRankKey(page: number, mode: number, tab: number): number {
           [185, 184, 183],
           [202, 201, 200],
         ][mode]?.[tab] ?? NaN
-      )
+      );
     case 3: // 套装排行
       return (
         [
@@ -105,7 +105,7 @@ function getPeakRankKey(page: number, mode: number, tab: number): number {
           [187, 186],
           [204, 203],
         ][mode]?.[tab] ?? NaN
-      )
+      );
     case 4: // 称号排行
       return (
         [
@@ -113,23 +113,23 @@ function getPeakRankKey(page: number, mode: number, tab: number): number {
           [189, 188],
           [206, 205],
         ][mode]?.[tab] ?? NaN
-      )
+      );
     default:
-      return NaN
+      return NaN;
   }
 }
 
 // 获取投票信息 voteType: 0 限制级；1 准限制级
 export async function getVoteInfo(req: Request, res: Response): Promise<void> {
-  const voteDate = Number(req.query.voteDate)
+  const voteDate = Number(req.query.voteDate);
   // 0 限制级；1 准限制级
-  const voteType = Number(req.query.voteType) === 1 ? 1 : 0
-  const startIdx = Number(req.query.startIdx ?? 0)
-  const endIdx = Number(req.query.endIdx ?? 25)
+  const voteType = Number(req.query.voteType) === 1 ? 1 : 0;
+  const startIdx = Number(req.query.startIdx ?? 0);
+  const endIdx = Number(req.query.endIdx ?? 25);
 
   if (!Number.isFinite(voteDate) || voteDate <= 0) {
-    res.json(badRequest('数据返回失败', { error: '请输入有效的投票日期' }))
-    return
+    res.json(badRequest('数据返回失败', { error: '请输入有效的投票日期' }));
+    return;
   }
 
   if (
@@ -138,8 +138,8 @@ export async function getVoteInfo(req: Request, res: Response): Promise<void> {
     startIdx < 0 ||
     endIdx < startIdx
   ) {
-    res.json(badRequest('数据返回失败', { error: '请输入有效的分页参数' }))
-    return
+    res.json(badRequest('数据返回失败', { error: '请输入有效的分页参数' }));
+    return;
   }
 
   try {
@@ -149,18 +149,18 @@ export async function getVoteInfo(req: Request, res: Response): Promise<void> {
       .addU32(voteDate)
       .addU32(startIdx)
       .addU32(endIdx)
-      .build()
-    const voteResult = await tcpService.sendAndReceive(4481, pkt)
+      .build();
+    const voteResult = await tcpService.sendAndReceive(4481, pkt);
 
     if (voteResult && voteResult.length > 0) {
-      const voteList = parseVoteList(voteResult)
-      res.json(success({ voteList }, '获取成功'))
-      return
+      const voteList = parseVoteList(voteResult);
+      res.json(success({ voteList }, '获取成功'));
+      return;
     }
 
-    res.json(notFound('数据返回失败', { error: '该投票日期的信息不存在' }))
+    res.json(notFound('数据返回失败', { error: '该投票日期的信息不存在' }));
   } catch (error) {
-    res.json(fail('数据返回失败', { error: (error as Error).message }, 500))
+    res.json(fail('数据返回失败', { error: (error as Error).message }, 500));
   }
 }
 
@@ -169,23 +169,23 @@ export async function getPeakRankInfo(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const keyParam = Number(req.query.key)
-  const page = Number(req.query.page)
-  const mode = Number(req.query.mode ?? 0)
-  const tab = Number(req.query.tab ?? 0)
-  const subkey = Number(req.query.subkey)
-  const startIdx = Number(req.query.startIdx ?? 0)
-  const endIdx = Number(req.query.endIdx ?? 99)
+  const keyParam = Number(req.query.key);
+  const page = Number(req.query.page);
+  const mode = Number(req.query.mode ?? 0);
+  const tab = Number(req.query.tab ?? 0);
+  const subkey = Number(req.query.subkey);
+  const startIdx = Number(req.query.startIdx ?? 0);
+  const endIdx = Number(req.query.endIdx ?? 99);
 
-  let key = keyParam
+  let key = keyParam;
 
   if (!Number.isFinite(key) || key <= 0) {
-    key = getPeakRankKey(page, mode, tab)
+    key = getPeakRankKey(page, mode, tab);
   }
 
   if (!Number.isFinite(key)) {
-    res.json(badRequest('数据返回失败', { error: '无效的排行榜类型' }))
-    return
+    res.json(badRequest('数据返回失败', { error: '无效的排行榜类型' }));
+    return;
   }
 
   if (
@@ -194,8 +194,8 @@ export async function getPeakRankInfo(
     key < 0 ||
     subkey < 0
   ) {
-    res.json(badRequest('数据返回失败', { error: '请输入有效的排行参数' }))
-    return
+    res.json(badRequest('数据返回失败', { error: '请输入有效的排行参数' }));
+    return;
   }
 
   if (
@@ -204,8 +204,8 @@ export async function getPeakRankInfo(
     startIdx < 0 ||
     endIdx < startIdx
   ) {
-    res.json(badRequest('数据返回失败', { error: '请输入有效的分页参数' }))
-    return
+    res.json(badRequest('数据返回失败', { error: '请输入有效的分页参数' }));
+    return;
   }
 
   try {
@@ -215,12 +215,12 @@ export async function getPeakRankInfo(
       .addU32(subkey)
       .addU32(startIdx)
       .addU32(endIdx)
-      .build()
+      .build();
 
-    const result = await tcpService.sendAndReceive(4481, pkt)
+    const result = await tcpService.sendAndReceive(4481, pkt);
 
     if (result && result.length > 0) {
-      const rankList = parseRankList(result)
+      const rankList = parseRankList(result);
       res.json(
         success(
           {
@@ -232,12 +232,12 @@ export async function getPeakRankInfo(
           },
           '获取成功',
         ),
-      )
-      return
+      );
+      return;
     }
 
-    res.json(notFound('数据返回失败', { error: '该排行信息不存在' }))
+    res.json(notFound('数据返回失败', { error: '该排行信息不存在' }));
   } catch (error) {
-    res.json(fail('数据返回失败', { error: (error as Error).message }))
+    res.json(fail('数据返回失败', { error: (error as Error).message }));
   }
 }

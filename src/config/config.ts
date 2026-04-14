@@ -1,31 +1,31 @@
-import dotenv from 'dotenv'
-import fs from 'fs'
-import os from 'os'
+import dotenv from 'dotenv';
+import fs from 'fs';
+import os from 'os';
 
 // Load .env.development on local Windows machines for easier development
-const isLocalWindows = os.platform() === 'win32'
+const isLocalWindows = os.platform() === 'win32';
 
 if (isLocalWindows && fs.existsSync('.env.development')) {
-  console.log('Env: development')
-  dotenv.config({ path: '.env.development' })
+  console.log('Env: development');
+  dotenv.config({ path: '.env.development' });
 }
 
-dotenv.config()
+dotenv.config();
 
 interface Settings {
-  game_server_host: string
-  game_server_port: number
+  game_server_host: string;
+  game_server_port: number;
 
-  service_account_id: number
-  service_account_password: string
+  service_account_id: number;
+  service_account_password: string;
 
-  http_port: number
-  log_callbacks: boolean
-  log_full_packet: boolean
-  ignored_cmd_ids: number[]
+  http_port: number;
+  log_callbacks: boolean;
+  log_full_packet: boolean;
+  ignored_cmd_ids: number[];
 
-  feishu_webhook_url: string
-  feishu_webhook_secret: string
+  feishu_webhook_url: string;
+  feishu_webhook_secret: string;
 }
 
 function getEnvNumber(
@@ -34,35 +34,35 @@ function getEnvNumber(
   min?: number,
   max?: number,
 ): number {
-  const value = process.env[key]
-  if (!value) return defaultValue
+  const value = process.env[key];
+  if (!value) return defaultValue;
 
-  const num = parseInt(value, 10)
-  if (isNaN(num)) return defaultValue
+  const num = parseInt(value, 10);
+  if (isNaN(num)) return defaultValue;
 
-  if (min !== undefined && num < min) return defaultValue
-  if (max !== undefined && num > max) return defaultValue
+  if (min !== undefined && num < min) return defaultValue;
+  if (max !== undefined && num > max) return defaultValue;
 
-  return num
+  return num;
 }
 
 function getEnvString(key: string, defaultValue: string): string {
-  return process.env[key] || defaultValue
+  return process.env[key] || defaultValue;
 }
 
 function getEnvBoolean(key: string, defaultValue: boolean): boolean {
-  const value = process.env[key]
-  if (!value) return defaultValue
-  return value.toLowerCase() === 'true' || value === '1'
+  const value = process.env[key];
+  if (!value) return defaultValue;
+  return value.toLowerCase() === 'true' || value === '1';
 }
 
 function getEnvNumberArray(key: string, defaultValue: number[]): number[] {
-  const value = process.env[key]
-  if (!value) return defaultValue
+  const value = process.env[key];
+  if (!value) return defaultValue;
   return value
     .split('|')
     .map((item) => parseInt(item.trim(), 10))
-    .filter((num) => !isNaN(num))
+    .filter((num) => !isNaN(num));
 }
 
 export const settings: Settings = {
@@ -81,16 +81,16 @@ export const settings: Settings = {
   ),
   feishu_webhook_url: getEnvString('FEISHU_WEBHOOK_URL', ''),
   feishu_webhook_secret: getEnvString('FEISHU_WEBHOOK_SECRET', ''),
-}
+};
 
 if (!settings.service_account_id) {
   console.warn(
     'Warning: SERVICE_ACCOUNT_ID is not set in environment variables',
-  )
+  );
 }
 
 if (!settings.service_account_password) {
   console.warn(
     'Warning: SERVICE_ACCOUNT_PASSWORD is not set in environment variables',
-  )
+  );
 }

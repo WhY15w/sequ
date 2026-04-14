@@ -8,7 +8,7 @@ export class HexFormatter {
    * @returns 8位大写十六进制字符串，例如 "0000ABCD"
    */
   static format08X(number: number): string {
-    return number.toString(16).toUpperCase().padStart(8, '0')
+    return number.toString(16).toUpperCase().padStart(8, '0');
   }
 
   /**
@@ -18,21 +18,21 @@ export class HexFormatter {
    * @returns 指定位数的大写十六进制字符串
    */
   static formatHex(number: number, width: number): string {
-    return number.toString(16).toUpperCase().padStart(width, '0')
+    return number.toString(16).toUpperCase().padStart(width, '0');
   }
 
   /**
    * 格式化为2位大写十六进制（1字节）
    */
   static format02X(number: number): string {
-    return number.toString(16).toUpperCase().padStart(2, '0')
+    return number.toString(16).toUpperCase().padStart(2, '0');
   }
 
   /**
    * 格式化为4位大写十六进制（2字节）
    */
   static format04X(number: number): string {
-    return number.toString(16).toUpperCase().padStart(4, '0')
+    return number.toString(16).toUpperCase().padStart(4, '0');
   }
 
   /**
@@ -46,14 +46,14 @@ export class HexFormatter {
     groupSize: number = 4,
     separator: string = ' ',
   ): string {
-    const hex = buffer.toString('hex').toUpperCase()
-    const groups: string[] = []
+    const hex = buffer.toString('hex').toUpperCase();
+    const groups: string[] = [];
 
     for (let i = 0; i < hex.length; i += groupSize * 2) {
-      groups.push(hex.substring(i, i + groupSize * 2))
+      groups.push(hex.substring(i, i + groupSize * 2));
     }
 
-    return groups.join(separator)
+    return groups.join(separator);
   }
 
   /**
@@ -62,6 +62,6 @@ export class HexFormatter {
    * @param width 每个数字的宽度
    */
   static formatArray(numbers: number[], width: number = 8): string {
-    return numbers.map((num) => this.formatHex(num, width)).join('')
+    return numbers.map((num) => this.formatHex(num, width)).join('');
   }
 }
