@@ -8,7 +8,7 @@ import { PacketBuilder } from '../utils/pkgBuilder.js';
 import { sendTextMessage } from '../utils/webHook/feishu.js';
 import dayjs from 'dayjs';
 
-const RECONNECT_BASE_DELAY_MS = 2000;
+const RECONNECT_BASE_DELAY_MS = 4000;
 const RECONNECT_MAX_DELAY_MS = 30000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const SERVER_CHECK_INTERVAL_MS = 60000;
@@ -242,12 +242,6 @@ export class TCPService {
           `【重连】第 ${this.reconnectAttempts} 次重连失败: ${
             (error as Error).message
           }`,
-        );
-        this._notifyReconnectFailure(
-          `【seer-query 告警】重连失败\n` +
-            `时间: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}\n` +
-            `次数: 第 ${this.reconnectAttempts} 次\n` +
-            `错误: ${(error as Error).message}`,
         );
         console.log(`【重连】等待 ${delay / 1000}s 后进行下一次尝试...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
