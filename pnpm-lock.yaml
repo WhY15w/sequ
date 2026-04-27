@@ -11,9 +11,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.14
         version: 1.19.14(hono@4.12.15)
-      '@types/node':
-        specifier: ^25.6.0
-        version: 25.6.0
       axios:
         specifier: ^1.15.2
         version: 1.15.2
@@ -30,6 +27,9 @@ importers:
       '@trivago/prettier-plugin-sort-imports':
         specifier: ^6.0.2
         version: 6.0.2(prettier@3.8.3)
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.6.0
       oxlint:
         specifier: ^1.61.0
         version: 1.61.0
