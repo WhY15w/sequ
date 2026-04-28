@@ -48,12 +48,12 @@ async function sendPacketAndToHex(
   ...params: number[]
 ): Promise<string> {
   const packet = buildPacket(cmdId, ...params);
-  return toHexStr(await tcpService.sendAndReceive(cmdId, packet));
+  return toHexStr(await tcpService.sendAndReceive(packet));
 }
 
 async function fetchNickname(account: number): Promise<NicknameResult> {
   const pkt = buildPacket(2052, account);
-  const res = await tcpService.sendAndReceive(2052, pkt);
+  const res = await tcpService.sendAndReceive(pkt);
   if (!res || res.length <= 39) return { success: false };
   const reader = new BufferReader(res);
   reader.skip(4);
@@ -71,7 +71,7 @@ interface OnlineResult {
 
 async function fetchOnlineStatus(account: number): Promise<OnlineResult> {
   const pkt = buildPacket(2157, 1, account);
-  const res = await tcpService.sendAndReceive(2157, pkt);
+  const res = await tcpService.sendAndReceive(pkt);
   if (!res || res.length < 12) return { online: false };
   const reader = new BufferReader(res);
   const isOnline = reader.readUInt32() === 1;
@@ -207,7 +207,7 @@ export async function getTeamInfo(c: Context): Promise<Response> {
 
   try {
     const pkt = new PacketBuilder().setCmdId(2917).addU32(teamId).build();
-    const result = await tcpService.sendAndReceive(2917, pkt);
+    const result = await tcpService.sendAndReceive(pkt);
 
     if (result && result.length > 0) {
       return c.json(

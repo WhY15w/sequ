@@ -122,7 +122,6 @@ function getPeakRankKey(page: number, mode: number, tab: number): number {
 // 获取投票信息 voteType: 0 限制级；1 准限制级
 export async function getVoteInfo(c: Context): Promise<Response> {
   const voteDate = Number(c.req.query('voteDate'));
-  // 0 限制级；1 准限制级
   const voteType = Number(c.req.query('voteType')) === 1 ? 1 : 0;
   const startIdx = Number(c.req.query('startIdx') ?? 0);
   const endIdx = Number(c.req.query('endIdx') ?? 25);
@@ -152,7 +151,7 @@ export async function getVoteInfo(c: Context): Promise<Response> {
       .addU32(startIdx)
       .addU32(endIdx)
       .build();
-    const voteResult = await tcpService.sendAndReceive(4481, pkt);
+    const voteResult = await tcpService.sendAndReceive(pkt);
 
     if (voteResult && voteResult.length > 0) {
       const voteList = parseVoteList(voteResult);
@@ -220,7 +219,7 @@ export async function getPeakRankInfo(c: Context): Promise<Response> {
       .addU32(endIdx)
       .build();
 
-    const result = await tcpService.sendAndReceive(4481, pkt);
+    const result = await tcpService.sendAndReceive(pkt);
 
     if (result && result.length > 0) {
       const rankList = parseRankList(result);

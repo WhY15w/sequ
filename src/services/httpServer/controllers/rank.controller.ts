@@ -56,7 +56,7 @@ async function getNormalRankInfo({
       .addU32(endIdx)
       .build();
 
-    const result = await tcpService.sendAndReceive(4481, pkt);
+    const result = await tcpService.sendAndReceive(pkt);
 
     if (result && result.length > 0) {
       const rankList = parseRankList(result);

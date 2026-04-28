@@ -122,7 +122,7 @@ export class TCPService {
           .addU32(account)
           .build();
 
-        await this.sendAndReceive(2157, pkt2157);
+        await this.sendAndReceive(pkt2157);
         console.log(
           `[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] 【心跳】2157 保持连接成功`,
         );
@@ -282,11 +282,21 @@ export class TCPService {
     );
   }
 
+  /**
+   * 发送封包并等待响应
+   * @param pktOrHex 封包对象或已构建的十六进制字符串
+   * @param timeout 等待响应的超时时间（毫秒），默认为 5000ms
+   * @returns 响应数据的 Buffer（已去掉 17 字节头部），如果超时或发生错误则返回 null
+   */
   async sendAndReceive(
-    cmdId: number,
-    hexPacket: string,
+    pktOrHex: PacketBuilder | string,
     timeout = 5000,
   ): Promise<Buffer | null> {
+    const hexPacket =
+      typeof pktOrHex === 'string' ? pktOrHex : pktOrHex.build();
+    const packetBuf = Buffer.from(hexPacket, 'hex');
+    const cmdId = packetBuf.readUInt32BE(5);
+
     const ensureReady = async () => {
       if (!this.isReady || !this.sender || !this.receiver) {
         this._scheduleReconnect();
