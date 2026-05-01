@@ -8,6 +8,7 @@ import {
   parseUnityNotice,
 } from '../utils/http/fetchData.js';
 import { PacketBuilder } from '../utils/pkg/builder.js';
+import { HEADER_SIZE } from '../utils/pkg/protocol.js';
 import { sendTextMessage } from '../utils/webHook/feishu.js';
 import dayjs from 'dayjs';
 
@@ -295,7 +296,7 @@ export class TCPService {
       if (!ok) throw new Error('封包发送失败');
 
       const data = await respPromise;
-      return data?.subarray(17) ?? null;
+      return data?.subarray(HEADER_SIZE) ?? null;
     };
 
     if (this.state !== State.Ready) {

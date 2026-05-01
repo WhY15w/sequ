@@ -9,7 +9,7 @@ import {
   notFound,
   success,
 } from '../../../utils/http/reply.js';
-import { PacketBuilder } from '../../../utils/pkg/builder.js';
+import { buildPacket } from '../../../utils/pkg/builder.js';
 import { BufferReader } from '../../../utils/pkg/reader.js';
 import { tcpService } from '../../tcpService.js';
 import type { Context } from 'hono';
@@ -19,6 +19,9 @@ interface NicknameResult {
   nickName?: string;
   hexData?: string;
 }
+
+const NICKNAME_MIN_LENGTH = 39;
+const ONLINE_STATUS_MIN_LENGTH = 12;
 
 const PEAK_PARAMS = [
   124801,
@@ -37,14 +40,6 @@ const PEAK_PARAMS = [
 
 const PEAK_QUERY_DELAY_MS = 5;
 
-const buildPacket = (cmdId: number, ...params: number[]): string => {
-  const builder = new PacketBuilder().setCmdId(cmdId);
-  for (const param of params) {
-    builder.addU32(param);
-  }
-  return builder.build();
-};
-
 const sleep = (delayMs: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
@@ -59,7 +54,7 @@ async function sendPacketAndToHex(
 async function fetchNickname(account: number): Promise<NicknameResult> {
   const pkt = buildPacket(2052, account);
   const res = await tcpService.sendAndReceive(pkt);
-  if (!res || res.length <= 39) return { success: false };
+  if (!res || res.length <= NICKNAME_MIN_LENGTH) return { success: false };
   const reader = new BufferReader(res);
   reader.skip(4);
   return {
@@ -77,7 +72,7 @@ interface OnlineResult {
 async function fetchOnlineStatus(account: number): Promise<OnlineResult> {
   const pkt = buildPacket(2157, 1, account);
   const res = await tcpService.sendAndReceive(pkt);
-  if (!res || res.length < 12) return { online: false };
+  if (!res || res.length < ONLINE_STATUS_MIN_LENGTH) return { online: false };
   const reader = new BufferReader(res);
   const isOnline = reader.readUInt32() === 1;
   reader.skip(4);
@@ -211,7 +206,7 @@ export async function getTeamInfo(c: Context): Promise<Response> {
   }
 
   try {
-    const pkt = new PacketBuilder().setCmdId(2917).addU32(teamId).build();
+    const pkt = buildPacket(2917, teamId);
     const result = await tcpService.sendAndReceive(pkt);
 
     if (result && result.length > 0) {

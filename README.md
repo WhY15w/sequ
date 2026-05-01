@@ -349,12 +349,16 @@ src/
         rank.controller.ts
   utils/
     commandDict.ts
-    fetchData.ts
-    format.ts
-    httpUtil.ts
-    pkgBuilder.ts
-    reader.ts
-    reply.ts
+    http/
+      fetchData.ts
+      httpUtil.ts
+      reply.ts
+    pkg/
+      builder.ts
+      format.ts
+      parser.ts
+      protocol.ts
+      reader.ts
     webHook/
       feishu.ts
 ```

@@ -4,16 +4,11 @@ import {
   notFound,
   success,
 } from '../../../utils/http/reply.js';
-import { PacketBuilder } from '../../../utils/pkg/builder.js';
+import { buildPacket } from '../../../utils/pkg/builder.js';
+import { parseRankList } from '../../../utils/pkg/parser.js';
 import { BufferReader } from '../../../utils/pkg/reader.js';
 import { tcpService } from '../../tcpService.js';
 import type { Context } from 'hono';
-
-type RankItem = {
-  userid: number;
-  score: number;
-  nick: string;
-};
 
 type VoteItem = {
   voteMonsterId: number;
@@ -34,22 +29,6 @@ function parseVoteList(voteResult: Buffer): VoteItem[] {
   }
 
   return voteList;
-}
-
-function parseRankList(rankResult: Buffer): RankItem[] {
-  const reader = new BufferReader(rankResult);
-  const rankListLen = reader.readUInt32();
-  const rankList: RankItem[] = [];
-
-  for (let i = 0; i < rankListLen; i++) {
-    rankList.push({
-      userid: reader.readUInt32(),
-      score: reader.readUInt32(),
-      nick: reader.readString(16),
-    });
-  }
-
-  return rankList;
 }
 
 /**
@@ -149,13 +128,7 @@ export async function getVoteInfo(c: Context): Promise<Response> {
   }
 
   try {
-    const pkt = new PacketBuilder()
-      .setCmdId(4481)
-      .addU32(191 + voteType)
-      .addU32(voteDate)
-      .addU32(startIdx)
-      .addU32(endIdx)
-      .build();
+    const pkt = buildPacket(4481, 191 + voteType, voteDate, startIdx, endIdx);
     const voteResult = await tcpService.sendAndReceive(pkt);
 
     if (voteResult && voteResult.length > 0) {
@@ -216,13 +189,7 @@ export async function getPeakRankInfo(c: Context): Promise<Response> {
   }
 
   try {
-    const pkt = new PacketBuilder()
-      .setCmdId(4481)
-      .addU32(key)
-      .addU32(subkey)
-      .addU32(startIdx)
-      .addU32(endIdx)
-      .build();
+    const pkt = buildPacket(4481, key, subkey, startIdx, endIdx);
 
     const result = await tcpService.sendAndReceive(pkt);
 

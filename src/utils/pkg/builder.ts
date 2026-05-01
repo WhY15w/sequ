@@ -1,4 +1,12 @@
-import { HexFormatter } from './format.js';
+import { format02X, format04X, format08X, formatBuffer } from './format.js';
+
+export function buildPacket(cmdId: number, ...params: number[]): string {
+  const builder = new PacketBuilder().setCmdId(cmdId);
+  for (const param of params) {
+    builder.addU32(param);
+  }
+  return builder.build();
+}
 
 /**
  * 数据包构建工具类
@@ -30,7 +38,7 @@ export class PacketBuilder {
     this.bodyParts.push(buffer);
 
     if (debug) {
-      console.log(`添加 UInt32: ${value} (0x${HexFormatter.format08X(value)})`);
+      console.log(`添加 UInt32: ${value} (0x${format08X(value)})`);
     }
     return this;
   }
@@ -44,7 +52,7 @@ export class PacketBuilder {
     this.bodyParts.push(buffer);
 
     if (debug) {
-      console.log(`添加 UInt16: ${value} (0x${HexFormatter.format04X(value)})`);
+      console.log(`添加 UInt16: ${value} (0x${format04X(value)})`);
     }
     return this;
   }
@@ -58,7 +66,7 @@ export class PacketBuilder {
     this.bodyParts.push(buffer);
 
     if (debug) {
-      console.log(`添加 UInt8: ${value} (0x${HexFormatter.format02X(value)})`);
+      console.log(`添加 UInt8: ${value} (0x${format02X(value)})`);
     }
     return this;
   }
@@ -122,13 +130,13 @@ export class PacketBuilder {
 
     if (debug) {
       console.log('=== 构建的数据包 ===');
-      console.log(`Length:  0x${HexFormatter.format08X(this.length)}`);
-      console.log(`Version: 0x${HexFormatter.format02X(this.version)}`);
-      console.log(`CmdId:   0x${HexFormatter.format08X(this.cmdId)}`);
-      console.log(`UserId:  0x${HexFormatter.format08X(this.userId)} (占位)`);
-      console.log(`Result:  0x${HexFormatter.format08X(this.result)} (占位)`);
-      console.log(`Body:    ${HexFormatter.formatBuffer(body, 4, ' ')}`);
-      console.log(`完整包:  ${HexFormatter.formatBuffer(packet, 4, ' ')}`);
+      console.log(`Length:  0x${format08X(this.length)}`);
+      console.log(`Version: 0x${format02X(this.version)}`);
+      console.log(`CmdId:   0x${format08X(this.cmdId)}`);
+      console.log(`UserId:  0x${format08X(this.userId)} (占位)`);
+      console.log(`Result:  0x${format08X(this.result)} (占位)`);
+      console.log(`Body:    ${formatBuffer(body, 4, ' ')}`);
+      console.log(`完整包:  ${formatBuffer(packet, 4, ' ')}`);
     }
 
     return packet.toString('hex').toUpperCase();

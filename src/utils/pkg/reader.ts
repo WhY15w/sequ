@@ -95,34 +95,4 @@ class BufferReader {
   }
 }
 
-/**
- * 位操作工具类
- */
-class BitUtil {
-  static getBit(value: number, bitIndex: number): number {
-    return (value >> bitIndex) & 1;
-  }
-
-  static setBit(value: number, bitIndex: number, bitValue: number): number {
-    if (bitValue === 1) {
-      return value | (1 << bitIndex);
-    } else {
-      return value & ~(1 << bitIndex);
-    }
-  }
-
-  static toggleBit(value: number, bitIndex: number): number {
-    return value ^ (1 << bitIndex);
-  }
-
-  static isBitSet(value: number, bitIndex: number): boolean {
-    return ((value >> bitIndex) & 1) === 1;
-  }
-
-  static getBits(value: number, startBit: number, endBit: number): number {
-    const mask = (1 << (endBit - startBit)) - 1;
-    return (value >> startBit) & mask;
-  }
-}
-
-export { BufferReader, BitUtil };
+export { BufferReader };
