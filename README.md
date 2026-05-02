@@ -1,8 +1,10 @@
+<img src="./img//logo.png" style="width:100%" />
+
 # Sequ
 
 `Sequ` (seer-query | 赛蛆）一个可扩展的`赛尔号`数据查询服务。通过 TCP 长连接与游戏服务器通信，对外暴露基于 [Hono](https://hono.dev) 的 HTTP API，支持查询米米号信息、在线状态、战队信息、巅峰排行、投票排行等数据，类插件机制，具有良好的扩展性。
 
-<img src="./img//logo.png" />
+本项目为[赛尔号信息聚合页](https://seerinfo.yuyuqaq.cn/)的衍生子项目
 
 ## 目录
 
