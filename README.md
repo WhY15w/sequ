@@ -2,6 +2,8 @@
 
 Sequ (seer-query | 赛蛆）是一个赛尔号数据查询服务。通过 TCP 长连接与游戏服务器通信，对外暴露基于 [Hono](https://hono.dev) 的 HTTP API，支持查询米米号信息、在线状态、战队信息、巅峰排行、投票排行等数据。
 
+<img src="./img//logo.png" />
+
 ## 目录
 
 - [功能特性](#功能特性)
