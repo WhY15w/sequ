@@ -3,6 +3,18 @@ import axios from 'axios';
 import crypto from 'crypto';
 import net from 'net';
 
+const SESSION_SERVER_URL = 'https://account-co.61.com/index.php';
+const CONNECT_TIMEOUT_MS = 10000;
+const SESSION_TIMEOUT_MS = 10000;
+
+const PACKET_HEADER_HEX = '0000020D31000003E9';
+const PACKET_ZERO_PAD_HEX = '00000000';
+
+const TAIL_HEX =
+  '74616F6D65650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000B38000000015043000000000000000000000000000000002710000000010000000100000002756E6974795F6170705F74616F6D656500000000000000000000000000000000636F6D2E74616F6D65652E736565722E6D6F62696C65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004E6974726F414E3531352D35352841636572290000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+
+const JSONP_SUFFIX = ');';
+
 export class Login {
   async login(
     userid: number | string,
@@ -21,34 +33,9 @@ export class Login {
     useridBytes.writeUInt32BE(userIdNum, 0);
 
     try {
-      const socket = new net.Socket();
+      const socket = await this.connectSocket();
 
-      await new Promise<void>((resolve, reject) => {
-        const onError = (err: Error) => {
-          clearTimeout(connectTimeout);
-          reject(err);
-        };
-
-        // 连接超时保护 (10秒)
-        const connectTimeout = setTimeout(() => {
-          socket.removeListener('error', onError);
-          socket.destroy();
-          reject(new Error('TCP 连接超时 (10s)'));
-        }, 10000);
-
-        socket.connect(
-          settings.game_server_port,
-          settings.game_server_host,
-          () => {
-            clearTimeout(connectTimeout);
-            socket.removeListener('error', onError);
-            resolve();
-          },
-        );
-        socket.on('error', onError);
-      });
-
-      const loginPacket = this.LOGIN_IN(useridBytes, sessionBytes);
+      const loginPacket = this.buildLoginPacket(useridBytes, sessionBytes);
 
       socket.write(loginPacket);
 
@@ -59,20 +46,48 @@ export class Login {
     }
   }
 
-  async fetchSessionToken(account: string, password: string): Promise<Buffer> {
-    const singleMd5Password = crypto
-      .createHash('md5')
-      .update(password)
-      .digest('hex');
+  private connectSocket(): Promise<net.Socket> {
+    return new Promise((resolve, reject) => {
+      const socket = new net.Socket();
+
+      const onError = (err: Error) => {
+        clearTimeout(connectTimeout);
+        reject(err);
+      };
+
+      const connectTimeout = setTimeout(() => {
+        socket.removeListener('error', onError);
+        socket.destroy();
+        reject(new Error('TCP 连接超时 (10s)'));
+      }, CONNECT_TIMEOUT_MS);
+
+      socket.connect(
+        settings.game_server_port,
+        settings.game_server_host,
+        () => {
+          clearTimeout(connectTimeout);
+          socket.removeListener('error', onError);
+          resolve(socket);
+        },
+      );
+      socket.on('error', onError);
+    });
+  }
+
+  private async fetchSessionToken(
+    account: string,
+    password: string,
+  ): Promise<Buffer> {
+    const md5Hash = crypto.createHash('md5').update(password).digest('hex');
     const timestamp = Date.now().toString();
     const callback = `jQuery19008830978978300397_${timestamp}`;
 
     const params = {
       r: 'userIdentity/authenticate',
-      callback: callback,
-      account: account,
+      callback,
+      account,
       rememberAcc: 'false',
-      passwd: singleMd5Password,
+      passwd: md5Hash,
       rememberPwd: 'true',
       vericode: '',
       game: '02',
@@ -80,10 +95,10 @@ export class Login {
       _: timestamp,
     };
 
-    const response = await axios.get('https://account-co.61.com/index.php', {
-      params: params,
+    const response = await axios.get(SESSION_SERVER_URL, {
+      params,
       responseType: 'text',
-      timeout: 10000,
+      timeout: SESSION_TIMEOUT_MS,
     });
 
     const payload = Login.parseJsonp(response.data.trim(), callback);
@@ -105,9 +120,11 @@ export class Login {
     }
   }
 
-  static parseJsonp(responseText: string, expectedCallback?: string): any {
-    const suffix = ');';
-    if (!responseText.endsWith(suffix)) {
+  private static parseJsonp(
+    responseText: string,
+    expectedCallback?: string,
+  ): any {
+    if (!responseText.endsWith(JSONP_SUFFIX)) {
       throw new Error('回调格式不正确');
     }
     const openParen = responseText.indexOf('(');
@@ -124,27 +141,22 @@ export class Login {
 
     const jsonText = responseText.substring(
       openParen + 1,
-      responseText.length - suffix.length,
+      responseText.length - JSONP_SUFFIX.length,
     );
     return JSON.parse(jsonText);
   }
 
-  LOGIN_IN(useridBytes: Buffer, sessionBytes: Buffer): Buffer {
-    const tailHex =
-      '74616F6D65650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000B38000000015043000000000000000000000000000000002710000000010000000100000002756E6974795F6170705F74616F6D656500000000000000000000000000000000636F6D2E74616F6D65652E736565722E6D6F62696C65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004E6974726F414E3531352D35352841636572290000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
-
+  private buildLoginPacket(useridBytes: Buffer, sessionBytes: Buffer): Buffer {
     const fullRecvBody = Buffer.concat([
       sessionBytes,
-      Buffer.from(tailHex, 'hex'),
+      Buffer.from(TAIL_HEX, 'hex'),
     ]);
 
-    const packetData = Buffer.concat([
-      Buffer.from('0000020D31000003E9', 'hex'),
+    return Buffer.concat([
+      Buffer.from(PACKET_HEADER_HEX, 'hex'),
       useridBytes,
-      Buffer.from('00000000', 'hex'),
+      Buffer.from(PACKET_ZERO_PAD_HEX, 'hex'),
       fullRecvBody,
     ]);
-
-    return packetData;
   }
 }
