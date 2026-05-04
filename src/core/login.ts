@@ -141,7 +141,7 @@ export class Login {
   private buildLoginPacket(userId: number, sessionBytes: Buffer): Buffer {
     const builder = new PacketBuilder();
     builder.setCmdId(1001);
-    (builder as any).userId = userId;
+    builder.setUserId(userId);
 
     // 1. session
     builder.addBytes(this.toFixedBuffer(sessionBytes, 16));

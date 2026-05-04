@@ -25,6 +25,11 @@ export class PacketBuilder {
     return this;
   }
 
+  setUserId(userId: number): this {
+    this.userId = userId;
+    return this;
+  }
+
   setVersion(version: number): this {
     this.version = version;
     return this;
