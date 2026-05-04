@@ -1,5 +1,6 @@
 import { settings } from '../config/config.js';
 import { PacketBuilder } from '../utils/pkg/builder.js';
+import { Svr } from './svr.js';
 import axios from 'axios';
 import crypto from 'crypto';
 import net from 'net';
@@ -25,9 +26,20 @@ export class Login {
     console.log(`获取 session 成功: ${sessionBytes.toString('hex')}`);
 
     try {
-      const socket = await this.connectSocket();
+      const svr = new Svr();
+      const svrInfo = await svr.getSvrInfo();
+      console.log(`获取 svrInfo 成功: ${JSON.stringify(svrInfo, null, 2)}`);
 
-      const loginPacket = this.buildLoginPacket(userIdNum, sessionBytes);
+      const socket = await this.connectSocket({
+        ip: svrInfo.ip,
+        port: svrInfo.port,
+      });
+
+      const loginPacket = this.buildLoginPacket(
+        userIdNum,
+        sessionBytes,
+        svrInfo.onlineID,
+      );
 
       socket.write(loginPacket);
 
@@ -38,7 +50,13 @@ export class Login {
     }
   }
 
-  private connectSocket(): Promise<net.Socket> {
+  private connectSocket({
+    ip = settings.game_server_host,
+    port = settings.game_server_port,
+  }: {
+    ip: string;
+    port: number;
+  }): Promise<net.Socket> {
     return new Promise((resolve, reject) => {
       const socket = new net.Socket();
 
@@ -53,15 +71,11 @@ export class Login {
         reject(new Error('TCP 连接超时 (10s)'));
       }, CONNECT_TIMEOUT_MS);
 
-      socket.connect(
-        settings.game_server_port,
-        settings.game_server_host,
-        () => {
-          clearTimeout(connectTimeout);
-          socket.removeListener('error', onError);
-          resolve(socket);
-        },
-      );
+      socket.connect(port, ip, () => {
+        clearTimeout(connectTimeout);
+        socket.removeListener('error', onError);
+        resolve(socket);
+      });
       socket.on('error', onError);
     });
   }
@@ -138,7 +152,11 @@ export class Login {
     return JSON.parse(jsonText);
   }
 
-  private buildLoginPacket(userId: number, sessionBytes: Buffer): Buffer {
+  private buildLoginPacket(
+    userId: number,
+    sessionBytes: Buffer,
+    onlineId: number,
+  ): Buffer {
     const builder = new PacketBuilder();
     builder.setCmdId(1001);
     builder.setUserId(userId);
@@ -148,7 +166,7 @@ export class Login {
     // 2. topLeftTmcid
     builder.addBytes(this.toFixedBuffer('taomee', 64));
     // 3. onlineID
-    builder.addU32(2200);
+    builder.addU32(onlineId);
     // 4. 固定值1
     builder.addU32(1);
     // 5. device
